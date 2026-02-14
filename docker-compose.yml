@@ -1,0 +1,12 @@
+services:
+  justsearch:
+    build: .
+    container_name: justsearch
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/settings.json:/app/backend/settings.json
+      - ./user_data:/app/user_data
+    environment:
+      - HEADLESS=true
+    restart: unless-stopped

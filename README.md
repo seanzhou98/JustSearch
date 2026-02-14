@@ -22,7 +22,28 @@
 -   **前端**: 原生 JS (ES6 Modules), CSS3, Markdown-it, DOMPurify
 -   **数据存储**: 本地 JSON 文件（用于对话历史和配置）
 
-## 📦 安装指南
+## � 快速启动 (一键部署)
+
+我们提供了简单的一键部署脚本，支持 Docker 和本地环境。推荐使用 Docker 以获得最佳体验。
+
+### Mac/Linux 用户
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
+### Windows 用户
+双击运行 `deploy.bat` 即可。
+
+脚本逻辑：
+1. **优先检查 Docker**：如果有 Docker，会自动构建并启动容器。
+2. **自动回退**：如果没有 Docker，会自动创建 Python 虚拟环境、安装依赖并启动服务。
+
+---
+
+## �📦 手动安装指南 (Manual Installation)
+
+如果您更喜欢手动控制，可以参考以下步骤：
 
 ### 1. 克隆仓库
 ```bash
