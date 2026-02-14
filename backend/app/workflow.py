@@ -4,13 +4,14 @@ from .llm_client import LLMClient
 from .browser_manager import BrowserManager
 
 class SearchWorkflow:
-    def __init__(self, api_key: str, base_url: str, model: str, search_engine: str = "google", max_results: int = 8, max_iterations: int = 5, interactive_search: bool = True):
+    def __init__(self, api_key: str, base_url: str, model: str, search_engine: str = "google", max_results: int = 8, max_iterations: int = 5, interactive_search: bool = True, session_id: str = None):
         self.llm = LLMClient(api_key, base_url, model)
         # Pass the search engine preference to the browser manager
         self.browser = BrowserManager(engine=search_engine, max_results=max_results)
         self.max_iterations = max_iterations
         self.history = []
         self.interactive_search = interactive_search
+        self.session_id = session_id
 
     def _format_references(self, answer: str, sources: List[Dict]) -> str:
         """
@@ -91,7 +92,7 @@ class SearchWorkflow:
                     progress_callback(f"目标 URL: {url}")
                     
                     if url not in visited_urls:
-                        content = await self.browser.crawl_page(url, log_func=progress_callback, interactive_mode=self.interactive_search, query=user_input, llm_client=self.llm)
+                        content = await self.browser.crawl_page(url, log_func=progress_callback, interactive_mode=self.interactive_search, query=user_input, llm_client=self.llm, session_id=self.session_id)
                         visited_urls.add(url)
                         source_id_counter += 1
                         new_sources.append({
@@ -126,7 +127,7 @@ class SearchWorkflow:
                         progress_callback(f"阶段 II: 在 {engine_name} 上搜索: {', '.join(valid_queries)}...")
                         
                         # [03] Web Search (Parallel)
-                        tasks = [self.browser.search_web(q, log_func=progress_callback) for q in valid_queries]
+                        tasks = [self.browser.search_web(q, log_func=progress_callback, session_id=self.session_id) for q in valid_queries]
                         results_list = await asyncio.gather(*tasks)
                         
                         # Flatten and Reindex results
@@ -170,7 +171,7 @@ class SearchWorkflow:
                             progress_callback("未找到新的相关页面进行爬取 (可能已访问过)。")
                         else:
                             progress_callback(f"正在爬取 {len(to_crawl)} 个新页面...")
-                            tasks = [self.browser.crawl_page(item['url'], log_func=progress_callback, interactive_mode=self.interactive_search, query=user_input, llm_client=self.llm) for item in to_crawl]
+                            tasks = [self.browser.crawl_page(item['url'], log_func=progress_callback, interactive_mode=self.interactive_search, query=user_input, llm_client=self.llm, session_id=self.session_id) for item in to_crawl]
                             contents = await asyncio.gather(*tasks)
                             
                             for i, item in enumerate(to_crawl):

@@ -17,6 +17,16 @@ _SEARCH_LOCK = asyncio.Lock()
 _LAST_REQUEST_TIME = 0
 _MIN_SEARCH_INTERVAL = 4.0  # Minimum seconds between search requests
 
+# Store pages that need user interaction: session_id -> { "page": page, "event": asyncio.Event() }
+_INTERACTION_SESSIONS = {}
+
+def get_interaction_session(session_id: str):
+    return _INTERACTION_SESSIONS.get(session_id)
+
+async def mark_interaction_completed(session_id: str):
+    if session_id in _INTERACTION_SESSIONS:
+        _INTERACTION_SESSIONS[session_id]["event"].set()
+
 # List of modern Chrome User Agents for macOS/Windows to rotate
 CHROME_USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
@@ -194,7 +204,7 @@ class BrowserManager:
         # Do not stop global browser as it is shared
         pass
 
-    async def search_web(self, query: str, log_func=None) -> List[Dict]:
+    async def search_web(self, query: str, log_func=None, session_id: str = None) -> List[Dict]:
         """
         [03] Concurrent Web Search (Google/Bing)
         Scrapes search results for the query based on the selected engine.
@@ -270,27 +280,37 @@ class BrowserManager:
                 print(f"CAPTCHA detected on {engine_name}!")
                 if log_func: log_func("浏览器: 检测到验证码！等待手动解决...")
                 
-                # If we are headless, restart in visible mode
-                if _CURRENT_HEADLESS_MODE:
-                    if log_func: log_func("浏览器: 检测到 Headless 模式，正在切换到可视化模式以进行验证...")
+                if session_id:
+                     if log_func: log_func("ACTION_REQUIRED: CAPTCHA_DETECTED") # Special signal for frontend
+                     
+                     # Register session for interaction
+                     event = asyncio.Event()
+                     _INTERACTION_SESSIONS[session_id] = {
+                        "page": page,
+                        "event": event,
+                        "last_active": time.time()
+                     }
+                     
+                     if log_func: log_func(f"浏览器: 请点击界面上的'手动验证'按钮来解决验证码")
+                     
+                     # Wait for completion signal or timeout (3 minutes)
+                     try:
+                        # Wait for either event set or wait selector success (in case user solves it but forgets to click done)
+                        # But here we mainly rely on user clicking "Done" in our UI or the event being set
+                        await asyncio.wait_for(event.wait(), timeout=180.0)
+                        if log_func: log_func("浏览器: 收到验证完成信号，继续执行...")
+                     except asyncio.TimeoutError:
+                        if log_func: log_func("浏览器: 等待手动验证超时。")
+                     finally:
+                        if session_id in _INTERACTION_SESSIONS:
+                            del _INTERACTION_SESSIONS[session_id]
+                else:
+                    # Fallback old logic
                     try:
-                        await page.close()
-                        await shutdown_global_browser()
-                        await init_global_browser(headless_override=False)
-                        
-                        # Re-create page and navigate
-                        page = await get_new_page()
-                        await self.stealth.apply_stealth_async(page)
-                        if log_func: log_func(f"浏览器: 正在重新加载页面以进行验证...")
-                        await page.goto(url, wait_until="domcontentloaded", timeout=20000)
-                    except Exception as e:
-                        if log_func: log_func(f"浏览器:切换可视化模式失败: {e}")
-
-                try:
-                    await page.wait_for_selector(config["wait_selector"], timeout=120000)
-                    if log_func: log_func("浏览器: 验证码已解决，继续...")
-                except:
-                    if log_func: log_func("浏览器: 验证码未及时解决。")
+                        await page.wait_for_selector(config["wait_selector"], timeout=60000)
+                        if log_func: log_func("浏览器: 验证码已解决，继续...")
+                    except:
+                        if log_func: log_func("浏览器: 验证码未及时解决。")
             
             # Wait for results
             try:
@@ -396,7 +416,7 @@ class BrowserManager:
         finally:
             await page.close()
 
-    async def crawl_page(self, url: str, log_func=None, interactive_mode: bool = False, query: str = None, llm_client=None) -> str:
+    async def crawl_page(self, url: str, log_func=None, interactive_mode: bool = False, query: str = None, llm_client=None, session_id: str = None) -> str:
         """
         [06] Headless Browser Deep Crawling
         """

@@ -107,7 +107,7 @@ export async function fetchGitHubStats() {
 }
 
 export async function streamChat(query, callbacks) {
-    const { onLog, onAnswerChunk, onAnswer, onSources, onError, onDone, signal, model } = callbacks;
+    const { onLog, onAnswerChunk, onAnswer, onSources, onError, onDone, onMeta, signal, model } = callbacks;
     
     try {
         const response = await fetch('/api/chat', {
@@ -150,9 +150,12 @@ export async function streamChat(query, callbacks) {
                     try {
                         const event = JSON.parse(dataStr);
                         
-                        if (event.type === 'log' && onLog) {
+                        if (event.type === 'meta' && onMeta) {
+                            onMeta(event.session_id);
+                        }
+                        else if (event.type === 'log' && onLog) {
                             onLog(event.content);
-                        } 
+                        }  
                         else if (event.type === 'sources' && onSources) {
                             onSources(event.content);
                         }

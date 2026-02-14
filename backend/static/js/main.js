@@ -147,6 +147,108 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Settings Modal
         setupSettingsModal();
         setupPasswordToggle();
+        setupBrowserModal();
+    }
+    
+    function setupBrowserModal() {
+        const modal = document.getElementById('browser-modal');
+        const closeBtn = document.getElementById('browser-close-btn');
+        const completeBtn = document.getElementById('browser-complete-btn');
+        const img = document.getElementById('browser-viewport');
+        const status = document.getElementById('browser-status');
+        
+        if (!modal) return;
+
+        let ws = null;
+
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        });
+
+        completeBtn.addEventListener('click', () => {
+            if (ws) {
+                ws.send(JSON.stringify({ action: 'complete' }));
+                completeBtn.disabled = true;
+                completeBtn.textContent = '正在提交...';
+            }
+        });
+
+        // Click handling on image
+        img.addEventListener('mousedown', (e) => {
+            if (!ws || img.style.display === 'none') return;
+            
+            const rect = img.getBoundingClientRect();
+            
+            // Map click on <img> to click on original viewport
+            // img.naturalWidth is the actual width of the screenshot (viewport width)
+            // rect.width is the displayed width
+            
+            const x = (e.clientX - rect.left) * (img.naturalWidth / rect.width);
+            const y = (e.clientY - rect.top) * (img.naturalHeight / rect.height);
+            
+            ws.send(JSON.stringify({
+                action: 'click',
+                x: x,
+                y: y
+            }));
+        });
+        
+        // Expose open function to state or window
+        state.openBrowserModal = (sessionId) => {
+            modal.style.display = 'block'; 
+            status.style.display = 'block';
+            status.textContent = '正在连接浏览器...';
+            img.style.display = 'none';
+            completeBtn.disabled = false;
+            completeBtn.textContent = '完成验证，继续执行';
+            
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/browser/${sessionId}`;
+            
+            if (ws) ws.close();
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                status.textContent = '已连接。等待画面...';
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'frame') {
+                    status.style.display = 'none';
+                    img.style.display = 'block';
+                    img.src = `data:image/jpeg;base64,${data.image}`;
+                } else if (data.type === 'status') {
+                     if (data.msg === 'Completed') {
+                         modal.style.display = 'none';
+                         if (ws) {
+                             ws.close();
+                             ws = null;
+                         }
+                     }
+                }
+            };
+            
+            ws.onclose = () => {
+                if (modal.style.display !== 'none') {
+                    // Only show disconnected if we didn't close it intentionally
+                    if (completeBtn.textContent !== '正在提交...') {
+                        status.style.display = 'block';
+                        status.textContent = '连接已断开 (会话可能已结束)';
+                    }
+                }
+            };
+            
+            ws.onerror = (e) => {
+                console.error("WS Error", e);
+                status.textContent = '连接错误';
+            };
+        };
     }
     
     function setupPasswordToggle() {
@@ -340,7 +442,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             await API.streamChat(text, {
                 model: selectedModel,
                 signal: controller.signal,
+                onMeta: (sessionId) => {
+                    setCurrentSessionId(sessionId);
+                },
                 onLog: (msg) => {
+                    if (msg.includes('ACTION_REQUIRED: CAPTCHA_DETECTED')) {
+                        if (state.openBrowserModal) {
+                            state.openBrowserModal(state.currentSessionId);
+                        }
+                        msg = "需要人工验证。请在弹出的窗口中解决验证码。";
+                    }
                     logContainer.style.display = 'block';
                     statusText.textContent = msg;
                     const entry = document.createElement('div');

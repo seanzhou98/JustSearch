@@ -5,7 +5,7 @@ import httpx
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +14,8 @@ from pydantic import BaseModel
 from .workflow import SearchWorkflow
 from .chat_manager import list_chats, load_chat_history, save_chat_history, delete_chat, get_chat_path, delete_all_chats
 from .settings_manager import load_settings, save_settings, DEFAULT_SETTINGS, get_next_api_key
-from .browser_manager import init_global_browser, shutdown_global_browser
+from .browser_manager import init_global_browser, shutdown_global_browser, get_interaction_session, mark_interaction_completed
+import base64
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -146,6 +147,108 @@ async def update_settings_endpoint(settings: SettingsModel):
         return {"status": "ok"}
     raise HTTPException(status_code=500, detail="Failed to save settings")
 
+@app.websocket("/ws/browser/{session_id}")
+async def browser_control_endpoint(websocket: WebSocket, session_id: str):
+    await websocket.accept()
+    
+    session = get_interaction_session(session_id)
+    if not session:
+        await websocket.close(code=4004, reason="No active interaction session")
+        return
+
+    page = session["page"]
+    
+    async def send_frames():
+        try:
+            while True:
+                if websocket.client_state.name != "CONNECTED":
+                    break
+                    
+                try:
+                    # Capture screenshot
+                    # quality=50 is a good balance for speed
+                    screenshot = await page.screenshot(type="jpeg", quality=50)
+                    b64_img = base64.b64encode(screenshot).decode("utf-8")
+                    await websocket.send_json({
+                        "type": "frame",
+                        "image": b64_img
+                    })
+                except Exception as e:
+                    print(f"Frame error: {e}")
+                    # If page is closed, we should stop
+                    break
+                    
+                await asyncio.sleep(0.5) 
+        except Exception:
+            pass
+
+    async def receive_events():
+        try:
+            while True:
+                data = await websocket.receive_json()
+                action = data.get("action")
+                
+                if action == "click":
+                    x = data.get("x")
+                    y = data.get("y")
+                    if x is not None and y is not None:
+                        try:
+                            await page.mouse.click(x, y)
+                        except:
+                            pass
+                
+                elif action == "scroll":
+                    delta_y = data.get("dy", 0)
+                    try:
+                        await page.mouse.wheel(0, delta_y)
+                    except:
+                        pass
+                    
+                elif action == "type":
+                    text = data.get("text")
+                    if text:
+                        try:
+                            await page.keyboard.type(text)
+                        except:
+                            pass
+                
+                elif action == "key":
+                    key = data.get("key")
+                    if key:
+                        try:
+                            await page.keyboard.press(key)
+                        except:
+                            pass
+
+                elif action == "complete":
+                    # User signaled completion
+                    await mark_interaction_completed(session_id)
+                    await websocket.send_json({"type": "status", "msg": "Completed"})
+                    break
+                    
+        except Exception as e:
+            print(f"Input error: {e}")
+
+    # Run both
+    tasks = [
+        asyncio.create_task(send_frames()),
+        asyncio.create_task(receive_events())
+    ]
+    
+    try:
+        # Wait until one finishes (usually receive_events on close or complete)
+        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        
+        for task in pending:
+            task.cancel()
+    except Exception:
+        pass
+    finally:
+        try:
+            await websocket.close()
+        except:
+            pass
+
 @app.post("/api/chat")
 async def chat_endpoint(request: ChatRequest):
     defaults = await load_settings()
@@ -187,7 +290,7 @@ async def chat_endpoint(request: ChatRequest):
     # Note: SearchWorkflow might fail if api_key is missing. 
     # We should catch this.
     try:
-        workflow = SearchWorkflow(api_key, base_url, model, search_engine, max_results, max_iterations, interactive_search)
+        workflow = SearchWorkflow(api_key, base_url, model, search_engine, max_results, max_iterations, interactive_search, session_id=session_id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
@@ -197,6 +300,9 @@ async def chat_endpoint(request: ChatRequest):
     context_messages = chat_history_data.get("messages", []) if chat_history_data else []
     
     async def event_generator():
+        # Send session_id immediately
+        yield f"data: {json.dumps({'type': 'meta', 'session_id': session_id})}\n\n"
+
         queue = asyncio.Queue()
         logs = []
         
