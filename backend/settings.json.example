@@ -1,0 +1,7 @@
+{
+    "theme": "light",
+    "api_key": "YOUR_API_KEY_HERE",
+    "base_url": "https://api-proxy.de/nvidia/v1",
+    "model_id": "deepseek-ai/deepseek-v3.2",
+    "search_engine": "google"
+}

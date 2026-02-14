@@ -1,0 +1,38 @@
+{
+    "google": {
+        "base_url": "https://www.google.com/search?q={query}&num={num}",
+        "selectors": {
+            "result_container": ["div.g", "#rso > div"],
+            "title": "h3",
+            "link": "a",
+            "snippet": "div[style*='-webkit-line-clamp']",
+            "date": ".LEwnzc, span.f, span.dna-a"
+        },
+        "captcha_check": ["#captcha-form", "异常流量"],
+        "wait_selector": "#rso"
+    },
+    "bing": {
+        "base_url": "https://www.bing.com/search?q={query}",
+        "selectors": {
+            "result_container": ["li.b_algo"],
+            "title": "h2",
+            "link": "h2 a",
+            "snippet": ".b_caption p, .b_algoSlug",
+            "date": ".news_dt"
+        },
+        "captcha_check": ["Ref A:"],
+        "wait_selector": "#b_results"
+    },
+    "duckduckgo": {
+        "base_url": "https://duckduckgo.com/?q={query}",
+        "selectors": {
+            "result_container": ["article[data-testid='result']", ".react-results--main li"],
+            "title": "h2",
+            "link": "a[data-testid='result-title-a']",
+            "snippet": "[data-testid='result-snippet']",
+            "date": ".result__timestamp"
+        },
+        "captcha_check": [],
+        "wait_selector": "#react-layout, .react-results--main"
+    }
+}

@@ -1,0 +1,69 @@
+import json
+import os
+import aiofiles
+
+SETTINGS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'settings.json')
+
+DEFAULT_SETTINGS = {
+    "theme": "light",
+    "api_key": "",
+    "base_url": "https://api-proxy.de/nvidia/v1",
+    "model_id": "deepseek-ai/deepseek-v3.2,moonshotai/kimi-k2-instruct-0905,moonshotai/kimi-k2-thinking",
+    "search_engine": "google",
+    "max_results": 8,
+    "max_iterations": 5,
+    "interactive_search": True
+}
+
+_api_key_index = 0
+
+def get_next_api_key(api_keys_str: str) -> str:
+    """
+    Get the next API key from a comma-separated string in a round-robin fashion.
+    If the string contains only one key or is empty, it returns the string as is (or empty).
+    """
+    global _api_key_index
+    if not api_keys_str:
+        return api_keys_str
+        
+    # Split by comma and strip whitespace
+    keys = [k.strip() for k in api_keys_str.split(',') if k.strip()]
+    
+    if not keys:
+        return ""
+        
+    if len(keys) == 1:
+        return keys[0]
+        
+    # Round-robin selection
+    current_key = keys[_api_key_index % len(keys)]
+    _api_key_index = (_api_key_index + 1) % len(keys)
+    
+    return current_key
+
+async def load_settings():
+    """Load settings from the JSON file asynchronously, or return defaults if not found."""
+    if not os.path.exists(SETTINGS_FILE):
+        return DEFAULT_SETTINGS.copy()
+    
+    try:
+        async with aiofiles.open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+            content = await f.read()
+            user_settings = json.loads(content)
+            # Merge with defaults to ensure all keys exist
+            settings = DEFAULT_SETTINGS.copy()
+            settings.update(user_settings)
+            return settings
+    except Exception as e:
+        print(f"Error loading settings: {e}")
+        return DEFAULT_SETTINGS.copy()
+
+async def save_settings(settings):
+    """Save settings to the JSON file asynchronously."""
+    try:
+        async with aiofiles.open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+            await f.write(json.dumps(settings, indent=4, ensure_ascii=False))
+        return True
+    except Exception as e:
+        print(f"Error saving settings: {e}")
+        return False
