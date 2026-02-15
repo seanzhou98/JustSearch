@@ -110,11 +110,13 @@ async def init_global_browser(headless_override: bool = None):
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-extensions',
+                '--window-size=1920,1080',
             ],
             viewport={"width": width, "height": height},
             user_agent=user_agent,
             locale="zh-CN",
-            timezone_id="Asia/Shanghai"
+            timezone_id="Asia/Shanghai",
+            ignore_default_args=["--enable-automation"],
         )
     except Exception as e:
         print(f"Failed to launch Chrome: {e}. Trying default Chromium...")
@@ -125,11 +127,13 @@ async def init_global_browser(headless_override: bool = None):
                 '--disable-blink-features=AutomationControlled',
                 '--disable-infobars',
                 '--no-sandbox',
+                '--window-size=1920,1080',
             ],
             viewport={"width": width, "height": height},
             locale="zh-CN",
             timezone_id="Asia/Shanghai",
-            user_agent=user_agent
+            user_agent=user_agent,
+            ignore_default_args=["--enable-automation"]
         )
     print(f"Global Browser Initialized with UA: {user_agent}")
 
@@ -297,10 +301,10 @@ class BrowserManager:
                      try:
                         # Wait for either event set or wait selector success (in case user solves it but forgets to click done)
                         # But here we mainly rely on user clicking "Done" in our UI or the event being set
-                        await asyncio.wait_for(event.wait(), timeout=180.0)
+                        await asyncio.wait_for(event.wait(), timeout=600.0)
                         if log_func: log_func("浏览器: 收到验证完成信号，继续执行...")
                      except asyncio.TimeoutError:
-                        if log_func: log_func("浏览器: 等待手动验证超时。")
+                        if log_func: log_func("浏览器: 等待手动验证超时 (10分钟)。")
                      finally:
                         if session_id in _INTERACTION_SESSIONS:
                             del _INTERACTION_SESSIONS[session_id]
@@ -314,7 +318,8 @@ class BrowserManager:
             
             # Wait for results
             try:
-                await page.wait_for_selector(config["wait_selector"], timeout=15000)
+                # Increased timeout to 30s for slower loads after CAPTCHA
+                await page.wait_for_selector(config["wait_selector"], timeout=30000)
                 await asyncio.sleep(1.0) # Let the page settle
             except Exception as e:
                 msg = f"等待结果容器 ({config['wait_selector']}) 超时。"

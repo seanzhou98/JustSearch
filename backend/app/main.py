@@ -57,7 +57,7 @@ class ChatRequest(BaseModel):
     model: Optional[str] = None
     api_key: Optional[str] = None
     base_url: Optional[str] = None
-    search_engine: Optional[str] = "duckduckgo"
+    search_engine: Optional[str] = None
     max_results: Optional[int] = 8
     max_iterations: Optional[int] = 5
     interactive_search: Optional[bool] = True
