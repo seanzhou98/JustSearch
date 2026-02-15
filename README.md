@@ -9,6 +9,16 @@
 
 ---
 
+## 💡 为什么选择 JustSearch？
+
+传统的搜索引擎往往只给你一系列链接，而 JustSearch 会：
+1. **深度理解**：利用 LLM 拆解您的意图，不只是关键词匹配。
+2. **真机阅读**：通过 Playwright 模拟真人打开网页，绕过简单的反爬，获取正文。
+3. **事实核查**：在生成答案时强制要求标注引用，拒绝 AI 幻觉。
+4. **自主迭代**：如果初次搜索结果不足以回答，它会自己决定“再搜一次”。
+
+---
+
 ## ✨ 核心特性
 
 -   **🎯 任务多级拆解**：自动分析用户意图，将复杂问题拆解为多个搜索查询或直接访问特定 URL。
@@ -57,6 +67,7 @@ chmod +x deploy.sh
 1. 打开浏览器访问 `http://localhost:8000`。
 2. 点击页面左下角的 **设置** ⚙️ 按钮。
 3. 输入您的 `API Key` 和 `Base URL`（例如 DeepSeek 的 API 地址）。
+    - **💡 提示**：`API Key` 支持输入多个（用英文逗号分隔），程序会自动轮询使用，适合多 Key 负载均衡。
 4. 开始提问！
 
 ---
@@ -150,13 +161,15 @@ python tools/manual_login.py
 JustSearch/
 ├── backend/            # 后端核心代码
 │   ├── app/            # FastAPI 应用逻辑
-│   ├── chats/          # 对话历史存储
+│   ├── chats/          # 对话历史存储 (自动创建)
 │   ├── static/         # 前端静态资源 (HTML/JS/CSS)
+│   ├── settings.json.example # 配置模板
 │   └── requirements.txt # Python 依赖
 ├── tools/              # 辅助工具 (如手动登录脚本)
+├── user_data/          # 浏览器持久化数据 (Cookies/配置，自动创建)
 ├── Dockerfile          # Docker 构建文件
 ├── docker-compose.yml  # Docker Compose 配置
-├── deploy.sh/bat       # 一键部署脚本
+├── deploy.sh/bat       # 智能一键部署脚本 (推荐)
 └── run.sh/bat          # 服务启动脚本
 ```
 
