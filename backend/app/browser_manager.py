@@ -314,13 +314,29 @@ class BrowserManager:
             
             # Wait for results
             try:
-                await page.wait_for_selector(config["wait_selector"], timeout=15000)
-                await asyncio.sleep(1.0) # Let the page settle
+                # Increased timeout for slower search engines/connections
+                wait_timeout = 30000 if self.engine == "duckduckgo" else 20000
+                await page.wait_for_selector(config["wait_selector"], timeout=wait_timeout)
+                await asyncio.sleep(1.5) # Let the page settle and React hydrate
             except Exception as e:
-                msg = f"等待结果容器 ({config['wait_selector']}) 超时。"
-                print(msg)
-                if log_func: log_func(f"浏览器错误: {msg}")
-                return []
+                # Check if we can still find results even if the wait_selector failed
+                # Sometimes the page structure is slightly different but results are there
+                found_any = False
+                for sel in config["selectors"]["result_container"]:
+                    try:
+                        if await page.query_selector(sel):
+                            found_any = True
+                            break
+                    except:
+                        pass
+                
+                if not found_any:
+                    msg = f"等待结果容器 ({config['wait_selector']}) 超时。"
+                    print(msg)
+                    if log_func: log_func(f"浏览器错误: {msg}")
+                    return []
+                else:
+                    if log_func: log_func(f"浏览器: 虽然等待超时，但检测到结果元素，尝试解析...")
 
             if log_func: log_func(f"浏览器: 正在解析结果...")
 
@@ -356,7 +372,15 @@ class BrowserManager:
                             if (!titleEl || !linkEl) continue;
                             
                             const title = titleEl.innerText;
-                            const url = linkEl.href;
+                            let url = linkEl.href;
+                            
+                            // Ensure URL is absolute
+                            if (url && url.startsWith('//')) {
+                                url = window.location.protocol + url;
+                            } else if (url && url.startsWith('/')) {
+                                url = window.location.origin + url;
+                            }
+                            
                             let snippet = "";
                             let date = "";
                             
