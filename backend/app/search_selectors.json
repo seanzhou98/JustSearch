@@ -26,13 +26,13 @@
     "duckduckgo": {
         "base_url": "https://duckduckgo.com/?q={query}",
         "selectors": {
-            "result_container": ["article[data-testid='result']", "div.result", ".react-results--main li", "div.links_main", ".results--main article"],
-            "title": "h2, .result__title, a[data-testid='result-title-a'], .result__a",
-            "link": "a[data-testid='result-title-a'], .result__a, a.result-link",
-            "snippet": "[data-testid='result-snippet'], .result__snippet",
+            "result_container": ["article[data-testid='result']", ".react-results--main li"],
+            "title": "h2",
+            "link": "a[data-testid='result-title-a']",
+            "snippet": "[data-testid='result-snippet']",
             "date": ".result__timestamp"
         },
-        "captcha_check": ["#captcha-form", "Error getting results", "If this persists, please email us", "Robot check"],
-        "wait_selector": "article[data-testid='result'], div.result, #react-layout, .react-results--main, .results--main"
+        "captcha_check": [],
+        "wait_selector": "#react-layout, .react-results--main"
     }
 }
