@@ -88,6 +88,40 @@ python3 -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 
 ---
 
+## 🔄 更新指南
+
+如果您需要更新到最新版本，请执行以下步骤：
+
+### 1. 获取最新代码
+```bash
+git pull
+```
+
+### 2. 重新部署
+#### Docker 用户 (推荐)
+直接运行：
+```bash
+./deploy.sh
+```
+或者手动运行：
+```bash
+docker-compose up -d --build
+```
+> **注意**：使用 `--build` 参数确保 Docker 重新构建镜像以应用最新的代码和依赖变更。您的配置 (`settings.json`) 和聊天记录 (`chats/`) 将会被保留。
+
+#### 本地 Python 用户
+```bash
+./deploy.sh
+```
+或者手动更新：
+```bash
+source venv/bin/activate
+pip install -r backend/requirements.txt
+playwright install chromium
+```
+
+---
+
 ## 🤖 工作流程详解
 
 JustSearch 采用多阶段迭代流程，确保回答的深度和准确性：

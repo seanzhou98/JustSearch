@@ -8,8 +8,9 @@ if [ ! -f "backend/settings.json" ]; then
     cp backend/settings.json.example backend/settings.json
 fi
 
-# Create user_data directory if not exists
+# Create directories if not exists
 mkdir -p user_data
+mkdir -p backend/chats
 
 # Function to run with docker
 run_docker() {
