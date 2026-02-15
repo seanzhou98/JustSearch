@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const closeBtn = document.getElementById('browser-close-btn');
         const completeBtn = document.getElementById('browser-complete-btn');
         const img = document.getElementById('browser-viewport');
-        const status = document.getElementById('browser-status');
+        const status = document.querySelector('.browser-status-overlay');
         
         if (!modal) return;
 
@@ -279,7 +279,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         settingsBtn.addEventListener('click', async () => {
             elements.settingsModal.style.display = 'block';
             document.getElementById('theme-select').value = state.settings.theme || 'light';
-            document.getElementById('engine-select').value = state.settings.search_engine || 'google';
+            document.getElementById('engine-select').value = state.settings.search_engine || 'duckduckgo';
             document.getElementById('max-results-input').value = state.settings.max_results || 8;
             document.getElementById('max-iterations-input').value = state.settings.max_iterations || 5;
             document.getElementById('api-key-input').value = state.settings.api_key || '';
@@ -334,7 +334,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const defaults = await API.restoreDefaultSettingsAPI();
             if (defaults) {
                 document.getElementById('theme-select').value = defaults.theme || 'light';
-                document.getElementById('engine-select').value = defaults.search_engine || 'google';
+                document.getElementById('engine-select').value = defaults.search_engine || 'duckduckgo';
                 document.getElementById('max-results-input').value = defaults.max_results || 8;
                 document.getElementById('max-iterations-input').value = defaults.max_iterations || 5;
                 document.getElementById('api-key-input').value = defaults.api_key || '';

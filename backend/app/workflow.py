@@ -4,7 +4,7 @@ from .llm_client import LLMClient
 from .browser_manager import BrowserManager
 
 class SearchWorkflow:
-    def __init__(self, api_key: str, base_url: str, model: str, search_engine: str = "google", max_results: int = 8, max_iterations: int = 5, interactive_search: bool = True, session_id: str = None):
+    def __init__(self, api_key: str, base_url: str, model: str, search_engine: str = "duckduckgo", max_results: int = 8, max_iterations: int = 5, interactive_search: bool = True, session_id: str = None):
         self.llm = LLMClient(api_key, base_url, model)
         # Pass the search engine preference to the browser manager
         self.browser = BrowserManager(engine=search_engine, max_results=max_results)

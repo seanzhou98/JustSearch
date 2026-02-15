@@ -53,7 +53,12 @@ pip install -r backend/requirements.txt
 echo 🌐 Installing Playwright browsers...
 playwright install chromium
 
-echo 🚀 Starting server...
-python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+:: Run the application using run.bat
+if exist "run.bat" (
+    call run.bat
+) else (
+    echo 🚀 Starting server...
+    python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+)
 
 pause

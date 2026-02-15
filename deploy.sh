@@ -53,11 +53,17 @@ else
     source venv/bin/activate
     
     echo "📦 Installing dependencies..."
+    pip install --upgrade pip
     pip install -r backend/requirements.txt
     
     echo "🌐 Installing Playwright browsers..."
     playwright install chromium
     
-    echo "🚀 Starting server..."
-    python3 -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+    # Run the application using run.sh
+    if [ -f "./run.sh" ]; then
+        ./run.sh
+    else
+        echo "🚀 Starting server..."
+        python3 -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+    fi
 fi

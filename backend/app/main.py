@@ -57,7 +57,7 @@ class ChatRequest(BaseModel):
     model: Optional[str] = None
     api_key: Optional[str] = None
     base_url: Optional[str] = None
-    search_engine: Optional[str] = "google"
+    search_engine: Optional[str] = "duckduckgo"
     max_results: Optional[int] = 8
     max_iterations: Optional[int] = 5
     interactive_search: Optional[bool] = True
@@ -67,7 +67,7 @@ class SettingsModel(BaseModel):
     api_key: Optional[str] = ""
     base_url: Optional[str] = ""
     model_id: Optional[str] = ""
-    search_engine: Optional[str] = "google"
+    search_engine: Optional[str] = "duckduckgo"
     max_results: Optional[int] = 8
     max_iterations: Optional[int] = 5
     interactive_search: Optional[bool] = True
@@ -268,7 +268,7 @@ async def chat_endpoint(request: ChatRequest):
         else:
             model = default_model
             
-    search_engine = request.search_engine or defaults.get("search_engine", "google")
+    search_engine = request.search_engine or defaults.get("search_engine", "duckduckgo")
     max_results = request.max_results or defaults.get("max_results", 8)
     max_iterations = request.max_iterations or defaults.get("max_iterations", 5)
     interactive_search = request.interactive_search if request.interactive_search is not None else defaults.get("interactive_search", True)

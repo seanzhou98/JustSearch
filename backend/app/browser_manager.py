@@ -163,7 +163,7 @@ async def get_new_page() -> Page:
         raise e
 
 class BrowserManager:
-    def __init__(self, engine: str = "google", max_results: int = 8):
+    def __init__(self, engine: str = "duckduckgo", max_results: int = 8):
         self.stealth = Stealth()
         self.engine = engine
         self.max_results = max_results
@@ -181,17 +181,17 @@ class BrowserManager:
         
         # Fallback default
         return {
-            "google": {
-                "base_url": "https://www.google.com/search?q={query}&num={num}",
+            "duckduckgo": {
+                "base_url": "https://duckduckgo.com/?q={query}",
                 "selectors": {
-                    "result_container": ["div.g", "#rso > div"],
-                    "title": "h3",
-                    "link": "a",
-                    "snippet": "div[style*='-webkit-line-clamp']",
-                    "date": ".LEwnzc, span.f, span.dna-a"
+                    "result_container": ["article[data-testid='result']", ".react-results--main li"],
+                    "title": "h2",
+                    "link": "a[data-testid='result-title-a']",
+                    "snippet": "[data-testid='result-snippet']",
+                    "date": ".result__timestamp"
                 },
-                "captcha_check": ["#captcha-form", "异常流量"],
-                "wait_selector": "#rso"
+                "captcha_check": [],
+                "wait_selector": "#react-layout, .react-results--main"
             }
         }
 
@@ -212,8 +212,8 @@ class BrowserManager:
         if not _GLOBAL_CONTEXT:
             await self.start()
         
-        # Get config based on current engine (default to google if not found)
-        config = self.engine_config.get(self.engine, self.engine_config["google"])
+        # Get config based on current engine (default to duckduckgo if not found)
+        config = self.engine_config.get(self.engine, self.engine_config["duckduckgo"])
         engine_name = self.engine.capitalize()
 
         page = await get_new_page()

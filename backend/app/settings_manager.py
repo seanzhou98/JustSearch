@@ -9,7 +9,7 @@ DEFAULT_SETTINGS = {
     "api_key": "",
     "base_url": "https://api-proxy.de/nvidia/v1",
     "model_id": "deepseek-ai/deepseek-v3.2,moonshotai/kimi-k2-instruct-0905,moonshotai/kimi-k2-thinking",
-    "search_engine": "google",
+    "search_engine": "duckduckgo",
     "max_results": 8,
     "max_iterations": 5,
     "interactive_search": True
