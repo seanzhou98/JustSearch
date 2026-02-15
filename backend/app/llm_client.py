@@ -166,7 +166,7 @@ class LLMClient:
         user_message = f"Question: {query}\n\nSources:\n"
         for src in sources:
             # Add strict length limit per source context to avoid token overflow
-            content_preview = src['content'][:3000] 
+            content_preview = src['content'][:5000] 
             date_info = f" (Date: {src.get('date')})" if src.get('date') else ""
             user_message += f"Source [{src['id']}] (Title: {src['title']}{date_info}):\n{content_preview}\n\n"
 
