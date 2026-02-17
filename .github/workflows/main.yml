@@ -3,40 +3,43 @@ name: Build & Push JustSearch Docker Image
 on:
   push:
     branches: [main, master]
-    tags: ['v*.*.*']          # 打 tag 时也触发（推荐用 semver 版本号）
+    tags: ['v*']
   pull_request:
-    branches: [main, master]  # PR 时只构建、不推送
+    branches: [main, master]
   workflow_dispatch:          # 允许手动触发
 
 env:
-  REGISTRY: ghcr.io                         # 推荐用 GitHub Container Registry
-  IMAGE_NAME: ${{ github.repository }}      # 自动变成  ghcr.io/你的用户名/JustSearch
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}   # 自动变成 ghcr.io/你的用户名/JustSearch
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write             # 必须，允许向 ghcr.io 写镜像
+      packages: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker QEMU (支持多架构)
+      # ── 多架构支持（amd64 + arm64） ─────────────────────────────────────
+      - name: Set up QEMU (for cross-platform emulation)
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # ── 登录 GHCR ────────────────────────────────────────────────────────
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}   # 内置变量，无需手动创建
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Docker metadata (标签、版本等)
+      # ── 自动生成合理的 tags（latest / branch / tag / sha） ───────────────
+      - name: Extract Docker metadata (tags & labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -48,13 +51,33 @@ jobs:
             type=semver,pattern={{version}}
             type=sha,format=long
 
-      - name: Build and push Docker image
+      # ── 核心：构建 + 推送 + 缓存（针对 JustSearch 的 Playwright 特点优化） ──
+      - name: Build and push multi-platform image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64          # 多架构，同时产出 arm64（树莓派/Graviton）
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+          # 强烈推荐：使用 GitHub Actions 内置缓存，大幅减少 chromium 下载时间
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+          # 针对 Playwright 项目非常重要的构建参数
+          build-args: |
+            PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0     # 强制下载（默认即可）
+            PLAYWRIGHT_BROWSERS_PATH=0             # 让 playwright install 安装到系统路径
+            NODE_OPTIONS=--max-old-space-size=4096  # 防止 node 内存溢出（常见于构建 chromium 时）
+
+          # 可选：如果你的 Dockerfile 支持，可以加 buildx 的 no-cache 选项用于调试
+          # no-cache: ${{ github.event_name == 'workflow_dispatch' && contains(github.event.inputs.debug, 'true') }}
+
+      # ── 可选：构建完成后简单验证（只在手动触发时运行） ─────────────────────
+      - name: Simple image size check (manual trigger only)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "Latest image tags:"
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
